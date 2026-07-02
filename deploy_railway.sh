@@ -46,12 +46,12 @@ fi
 
 # 2. CHECK AUTHENTICATION STATUS
 echo -e "${Y}[*] Checking Railway credentials...${N}"
-if ! railway status &>/dev/null; then
+if ! railway whoami &>/dev/null; then
     echo -e "${Y}[*] Authentication required. Redirecting to login...${N}"
     railway login
     
     # Verify login again
-    if ! railway status &>/dev/null; then
+    if ! railway whoami &>/dev/null; then
         echo -e "${R}[!] Authentication failed. Please log in manually using 'railway login'.${N}"
         exit 1
     fi
