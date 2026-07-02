@@ -55,10 +55,22 @@ Before deploying, you can configure these variables in the Railway dashboard:
 3. Your VLESS connection link will be printed on the screen automatically!
 
 ### Method 2: Railway CLI (Fully Automated) | روش دوم: اجرای کاملاً خودکار با ابزار خط فرمان
-To deploy and automatically fetch your VLESS link directly in your local terminal, execute:
-برای دیپلوی خودکار و چاپ مستقیم لینک VLESS در ترمینال سیستم خود، دستور زیر را اجرا کنید:
+To deploy and automatically fetch your VLESS link directly in your local terminal, choose your OS:
+برای دیپلوی خودکار و چاپ مستقیم لینک VLESS در ترمینال سیستم خود، دستور متناسب با سیستم‌عامل خود را اجرا کنید:
+
+#### 🐧 Linux & macOS (Bash):
 ```bash
 git clone https://github.com/iWZed/zed-tunnel-pro.git && cd zed-tunnel-pro && bash deploy_railway.sh
+```
+
+#### 🪟 Windows PowerShell:
+```powershell
+git clone https://github.com/iWZed/zed-tunnel-pro.git; cd zed-tunnel-pro; .\deploy_railway.ps1
+```
+
+#### 🪟 Windows CMD:
+```cmd
+git clone https://github.com/iWZed/zed-tunnel-pro.git && cd zed-tunnel-pro && deploy_railway.bat
 ```
 
 ---
