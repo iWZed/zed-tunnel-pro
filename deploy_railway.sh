@@ -136,7 +136,7 @@ deploy_retry=1
 deploy_success=false
 
 while [ $deploy_retry -le $max_deploy_retries ]; do
-    railway up --ci
+    railway up --service zed-tunnel --ci
     if [ $? -eq 0 ]; then
         deploy_success=true
         break

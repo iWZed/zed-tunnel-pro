@@ -136,7 +136,7 @@ $deployRetry = 1
 $deploySuccess = $false
 
 while ($deployRetry -le $maxDeployRetries) {
-    & railway up --ci
+    & railway up --service zed-tunnel --ci
     if ($LASTEXITCODE -eq 0) {
         $deploySuccess = $true
         break
