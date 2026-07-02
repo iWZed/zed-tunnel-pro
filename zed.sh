@@ -133,7 +133,7 @@ else
         echo -e "  ${G}[1]${N} Free Cloudflare Tunnel (TryCloudflare - Temporary)"
         echo -e "  ${G}[2]${N} Personal Tunnel (Custom Domain - Requires Login)"
         read -p "  👉 Select Option [1-2]: " mode_raw
-        mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
+        mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
         
         if [ "$mode" = "1" ] || [ "$mode" = "2" ]; then
             break

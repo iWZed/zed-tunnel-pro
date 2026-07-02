@@ -54,7 +54,7 @@ if [ $? -eq 0 ] && [ -n "$USER_INFO" ]; then
         echo -e "  ${G}[1]${N} Continue with this account"
         echo -e "  ${R}[2]${N} Log out and switch accounts"
         read -p "  👉 Choice [1-2]: " auth_opt_raw
-        auth_opt=$(echo "$auth_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
+        auth_opt=$(echo "$auth_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
         
         if [ "$auth_opt" = "1" ]; then
             break
@@ -82,14 +82,14 @@ fi
 echo -e "${G}✔ Authenticated successfully.${N}"
 
 # 3. INITIALIZE / LINK PROJECT
-if [ ! -d .railway ]; then
+if ! railway status &>/dev/null; then
     echo -e "${Y}❯ Initializing new Railway project...${N}"
     echo -e "\n${Y}⚠ ACTION REQUIRED:${N}"
     echo -e "  1. Select ${G}Empty Project${N} when prompted."
     echo -e "  2. Name your service (e.g., ${C}zed-tunnel${N}).\n"
     railway init
     
-    if [ ! -d .railway ]; then
+    if ! railway status &>/dev/null; then
         echo -e "${R}✖ Project initialization aborted.${N}"
         exit 1
     fi
