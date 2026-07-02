@@ -128,25 +128,26 @@ if [ "$LINKED" = false ]; then
     fi
 fi
 
-# 4. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
-echo -e "${Y}[*] Setting up network domain...${N}"
+# 4. DEPLOY TO RAILWAY
+echo -e "${Y}❯ Compiling and deploying container (this may take a moment)...${N}"
+railway up --ci
+
+if [ $? -ne 0 ]; then
+    echo -e "${R}✖ Deployment failed due to network timeout or connection issues.${N}"
+    echo -e "${Y}❯ Note: If you are in Iran, you might need to use a proxy/VPN to run Railway CLI commands.${N}"
+    exit 1
+fi
+echo -e "${G}✔ Container compiled and deployed successfully!${N}"
+
+# 5. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
+echo -e "${Y}❯ Setting up public domain for web terminal...${N}"
 railway domain >/dev/null 2>&1 || true
 
 # Fetch domain name
 DOMAIN_NAME=$(railway domain list 2>/dev/null | grep -oE '[a-zA-Z0-9.-]+\.up\.railway\.app' | head -n1)
 
-# 5. DEPLOY TO RAILWAY
-echo -e "${Y}[*] Compiling and deploying container...${N}"
-railway up --ci
-
-if [ $? -ne 0 ]; then
-    echo -e "${R}[!] Deployment failed.${N}"
-    exit 1
-fi
-echo -e "${G}[+] Container compiled and deployed!${N}"
-
 # 6. SCRAPE VLESS CONNECTION LINK
-echo -e "${Y}[*] Waiting for container boot & VLESS link generation (takes ~15s)...${N}"
+echo -e "${Y}❯ Waiting for container boot & VLESS link generation (takes ~15s)...${N}"
 sleep 15
 
 VLESS_LINK=""
