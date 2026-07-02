@@ -48,17 +48,25 @@ USER_INFO=$(railway whoami 2>/dev/null)
 
 if [ $? -eq 0 ] && [ -n "$USER_INFO" ]; then
     echo -e "${G}✔ Active Account: ${W}${USER_INFO}${N}"
-    echo -e "\n${C}❯ Account Action:${N}"
-    echo -e "  ${G}[1]${N} Continue with this account"
-    echo -e "  ${R}[2]${N} Log out and switch accounts"
-    read -p "  👉 Choice [1-2]: " auth_opt_raw
-    auth_opt=$(echo "$auth_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
     
-    if [ "$auth_opt" = "2" ] || [[ "$auth_opt" =~ ^[nN] ]] || [ "$auth_opt" = "logout" ]; then
-        echo -e "${Y}❯ Logging out...${N}"
-        railway logout >/dev/null 2>&1 || true
-        USER_INFO=""
-    fi
+    while true; do
+        echo -e "\n${C}❯ Account Action:${N}"
+        echo -e "  ${G}[1]${N} Continue with this account"
+        echo -e "  ${R}[2]${N} Log out and switch accounts"
+        read -p "  👉 Choice [1-2]: " auth_opt_raw
+        auth_opt=$(echo "$auth_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
+        
+        if [ "$auth_opt" = "1" ]; then
+            break
+        elif [ "$auth_opt" = "2" ] || [[ "$auth_opt" =~ ^[nN] ]] || [ "$auth_opt" = "logout" ]; then
+            echo -e "${Y}❯ Logging out...${N}"
+            railway logout >/dev/null 2>&1 || true
+            USER_INFO=""
+            break
+        else
+            echo -e "${R}✖ Invalid input: '$auth_opt_raw'. Please enter 1 or 2.${N}"
+        fi
+    done
 fi
 
 if [ -z "$USER_INFO" ]; then

@@ -128,11 +128,19 @@ nohup /usr/local/bin/xray -config /usr/local/etc/xray/config.json >/dev/null 2>&
 if [ "$AUTO_MODE" = true ]; then
     mode="1"
 else
-    echo -e "\n${C}❯ Select Cloudflare Tunnel Mode:${N}"
-    echo -e "  ${G}[1]${N} Free Cloudflare Tunnel (TryCloudflare - Temporary)"
-    echo -e "  ${G}[2]${N} Personal Tunnel (Custom Domain - Requires Login)"
-    read -p "  👉 Select Option [1-2]: " mode_raw
-    mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
+    while true; do
+        echo -e "\n${C}❯ Select Cloudflare Tunnel Mode:${N}"
+        echo -e "  ${G}[1]${N} Free Cloudflare Tunnel (TryCloudflare - Temporary)"
+        echo -e "  ${G}[2]${N} Personal Tunnel (Custom Domain - Requires Login)"
+        read -p "  👉 Select Option [1-2]: " mode_raw
+        mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
+        
+        if [ "$mode" = "1" ] || [ "$mode" = "2" ]; then
+            break
+        else
+            echo -e "${R}✖ Invalid selection: '$mode_raw'. Please enter 1 or 2.${N}"
+        fi
+    done
 fi
 
 case "$mode" in
