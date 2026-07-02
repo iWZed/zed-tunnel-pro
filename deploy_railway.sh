@@ -134,6 +134,95 @@ echo -e "${Y}❯ Compiling and deploying container (this may take a moment)...${
 # Ensure the zed-tunnel service exists in the project
 railway add --service zed-tunnel >/dev/null 2>&1 || true
 
+# Prompt for Cloudflare Tunnel Configuration
+echo -e "\n${C}❯ Select Cloudflare Tunnel Mode for Server/Container:${N}"
+echo -e "  ${G}[1]${N} Free Cloudflare Tunnel (TryCloudflare - Temporary/Default)"
+echo -e "  ${Y}[2]${N} Personal Tunnel (Custom Domain - Requires Cloudflare Tunnel Token)"
+
+while true; do
+    read -p "  👉 Choice [1-2]: " cf_mode_raw
+    cf_mode=$(echo "$cf_mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
+    
+    if [ "$cf_mode" = "1" ] || [ -z "$cf_mode" ]; then
+        echo -e "${Y}❯ Configuring TryCloudflare...${N}"
+        railway variable set TUNNEL_MODE=1 --service zed-tunnel >/dev/null 2>&1 || true
+        break
+    elif [ "$cf_mode" = "2" ]; then
+        echo -e "\n${C}❯ Personal Tunnel Authentication:${N}"
+        echo -e "  ${G}[1]${N} Automate Setup (Login & Create Tunnel locally)"
+        echo -e "  ${G}[2]${N} Manual Setup (Enter Tunnel Token & Domain)"
+        
+        while true; do
+            read -p "  👉 Choice [1-2]: " cf_auth_choice_raw
+            cf_auth_choice=$(echo "$cf_auth_choice_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
+            
+            if [ "$cf_auth_choice" = "1" ]; then
+                # Ensure cloudflared is available locally
+                CLOUDFLARED_BIN="cloudflared"
+                if ! command -v cloudflared &>/dev/null; then
+                    if [ -f "./cloudflared" ]; then
+                        CLOUDFLARED_BIN="./cloudflared"
+                    else
+                        echo -e "${Y}❯ Cloudflared is not installed locally. Downloading portable version...${N}"
+                        curl -L -s https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o ./cloudflared
+                        chmod +x ./cloudflared
+                        CLOUDFLARED_BIN="./cloudflared"
+                    fi
+                fi
+                
+                echo -e "${Y}[*] Cloudflare authentication required. Please follow the login prompt:${N}"
+                $CLOUDFLARED_BIN tunnel login
+                
+                echo -e "\n${C}>>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<${N}"
+                read -p " Domain: " cf_domain
+                cf_domain=$(echo "$cf_domain" | xargs)
+                if [ -z "$cf_domain" ]; then
+                    echo -e "${R}[!] Domain cannot be empty.${N}"
+                    exit 1
+                fi
+                
+                TNAME="zed-railway-$(date +%s)"
+                echo -e "${Y}[*] Creating Tunnel (${TNAME})...${N}"
+                $CLOUDFLARED_BIN tunnel create "$TNAME"
+                
+                TID=$($CLOUDFLARED_BIN tunnel list | grep "$TNAME" | awk '{print $1}' | head -n1)
+                if [ -z "$TID" ]; then
+                    echo -e "${R}[!] Failed to retrieve Tunnel ID.${N}"
+                    exit 1
+                fi
+                
+                echo -e "${Y}[*] Routing DNS for ${cf_domain}...${N}"
+                $CLOUDFLARED_BIN tunnel route dns -f "$TID" "$cf_domain"
+                
+                CRED_FILE="$HOME/.cloudflared/$TID.json"
+                if [ ! -f "$CRED_FILE" ]; then
+                    echo -e "${R}[!] Credentials file not found at $CRED_FILE${N}"
+                    exit 1
+                fi
+                CF_CRED_CONTENT=$(cat "$CRED_FILE")
+                
+                echo -e "${Y}❯ Uploading Cloudflare Tunnel configuration to Railway...${N}"
+                railway variable set TUNNEL_MODE=2 CF_TUNNEL_ID="$TID" CF_TUNNEL_CREDENTIALS="$CF_CRED_CONTENT" CF_DOMAIN="$cf_domain" --service zed-tunnel >/dev/null 2>&1 || true
+                break 2
+            elif [ "$cf_auth_choice" = "2" ]; then
+                read -p "  👉 Enter your Cloudflare Tunnel Token: " cf_token
+                read -p "  👉 Enter your Custom Domain (e.g., vpn.yourdomain.com): " cf_domain
+                if [ -n "$cf_token" ] && [ -n "$cf_domain" ]; then
+                    echo -e "${Y}❯ Setting Personal Tunnel variables on Railway...${N}"
+                    railway variable set TUNNEL_MODE=2 CF_TUNNEL_TOKEN="$cf_token" CF_DOMAIN="$cf_domain" --service zed-tunnel >/dev/null 2>&1 || true
+                    break 2
+                else
+                    echo -e "${R}✖ Token and Domain cannot be empty.${N}"
+                fi
+            else
+                echo -e "${R}✖ Invalid choice. Please enter 1 or 2.${N}"
+            fi
+        done
+    else
+        echo -e "${R}✖ Invalid choice. Please enter 1 or 2.${N}"
+    fi
+done
+
 max_deploy_retries=3
 deploy_retry=1
 deploy_success=false
@@ -161,11 +250,35 @@ fi
 echo -e "${G}✔ Container compiled and deployed successfully!${N}"
 
 # 5. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
-echo -e "${Y}❯ Setting up public domain for web terminal...${N}"
-railway domain >/dev/null 2>&1 || true
+echo -e "\n${C}❯ Public Domain Options:${N}"
+echo -e "  ${G}[1]${N} Use a free Railway domain (*.up.railway.app)"
+echo -e "  ${Y}[2]${N} Use your own custom domain"
 
-# Fetch domain name
-DOMAIN_NAME=$(railway domain list 2>/dev/null | grep -oE '[a-zA-Z0-9.-]+\.up\.railway\.app' | head -n1)
+DOMAIN_NAME=""
+while true; do
+    read -p "  👉 Choice [1-2]: " domain_choice_raw
+    domain_choice=$(echo "$domain_choice_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
+    
+    if [ "$domain_choice" = "1" ]; then
+        echo -e "${Y}❯ Setting up free Railway domain...${N}"
+        railway domain --service zed-tunnel >/dev/null 2>&1 || true
+        DOMAIN_NAME=$(railway domain list --service zed-tunnel 2>/dev/null | grep -oE '[a-zA-Z0-9.-]+\.up\.railway\.app' | head -n1)
+        break
+    elif [ "$domain_choice" = "2" ]; then
+        read -p "  👉 Enter your custom domain: " custom_domain
+        if [ -n "$custom_domain" ]; then
+            echo -e "${Y}❯ Binding custom domain: $custom_domain...${N}"
+            railway domain "$custom_domain" --service zed-tunnel
+            DOMAIN_NAME="$custom_domain"
+            echo -e "${Y}⚠ IMPORTANT: Make sure to point your DNS (CNAME or ALIAS) to the target shown above.${N}"
+            break
+        else
+            echo -e "${R}✖ Domain cannot be empty.${N}"
+        fi
+    else
+        echo -e "${R}✖ Invalid choice. Please enter 1 or 2.${N}"
+    fi
+done
 
 # 6. SCRAPE VLESS CONNECTION LINK
 echo -e "${Y}❯ Waiting for container boot & VLESS link generation (takes ~15s)...${N}"

@@ -126,12 +126,13 @@ nohup /usr/local/bin/xray -config /usr/local/etc/xray/config.json >/dev/null 2>&
 
 # 3. TUNNEL MODE SELECTION
 if [ "$AUTO_MODE" = true ]; then
-    mode="1"
+    # In auto mode (like docker/railway), default to TUNNEL_MODE env var if set, otherwise 1 (TryCloudflare)
+    mode="${TUNNEL_MODE:-1}"
 else
     while true; do
         echo -e "\n${C}❯ Select Cloudflare Tunnel Mode:${N}"
         echo -e "  ${G}[1]${N} Free Cloudflare Tunnel (TryCloudflare - Temporary)"
-        echo -e "  ${G}[2]${N} Personal Tunnel (Custom Domain - Requires Login)"
+        echo -e "  ${G}[2]${N} Personal Tunnel (Custom Domain - Requires Login/Token)"
         read -p "  👉 Select Option [1-2]: " mode_raw
         mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
         
@@ -162,8 +163,8 @@ case "$mode" in
             # In auto mode, wait dynamically up to 30 seconds for the log to contain the domain
             retries=0
             while [ $retries -lt 30 ]; do
-                CF_DOMAIN=$(grep -oE '[a-zA-Z0-9.-]+\.trycloudflare\.com' /tmp/cf.log | head -n1)
-                if [ -n "$CF_DOMAIN" ]; then
+                CF_DOMAIN_TEMP=$(grep -oE '[a-zA-Z0-9.-]+\.trycloudflare\.com' /tmp/cf.log | head -n1)
+                if [ -n "$CF_DOMAIN_TEMP" ]; then
                     break
                 fi
                 sleep 1
@@ -190,47 +191,72 @@ case "$mode" in
         LINK="vless://${UUID}@188.114.96.6:443?encryption=none&security=tls&sni=${CF_DOMAIN}&fp=random&alpn=http%2F1.1&type=ws&host=${CF_DOMAIN}&path=%2F#zed-Free"
         ;;
     2)
-        print_header
-        # Check Cloudflare credentials
-        if [ ! -f /root/.cloudflared/cert.pem ]; then
-            echo -e "${Y}[*] Cloudflare authentication required. Please follow the login prompt:${N}"
-            /root/cloudflared tunnel login
-        fi
-        
-        echo -e "\n${C}>>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<${N}"
-        read -p " Domain: " raw_domain
-        DOMAIN=$(echo "$raw_domain" | xargs)
-        
-        if [ -z "$DOMAIN" ]; then
-            echo -e "${R}[!] Domain cannot be empty.${N}"
-            exit 1
-        fi
-        
-        TNAME="zed-$(date +%s)"
-        echo -ne "${Y}[*] Creating Tunnel (${TNAME})...${N}"
-        /root/cloudflared tunnel create "$TNAME" >/dev/null 2>&1 &
-        spinner $!
-        
-        TID=$(/root/cloudflared tunnel list | grep "$TNAME" | awk '{print $1}' | head -n1)
-        if [ -z "$TID" ]; then
-            echo -e " ${R}FAILED${N}"
-            echo -e "${R}[!] Failed to create tunnel.${N}"
-            exit 1
-        fi
-        echo -e " ${G}Created! (ID: $TID)${N}"
-        
-        echo -ne "${Y}[*] Routing DNS for ${DOMAIN}...${N}"
-        /root/cloudflared tunnel route dns -f "$TID" "$DOMAIN" >/dev/null 2>&1 &
-        spinner $!
-        
-        if ! /root/cloudflared tunnel route dns -f "$TID" "$DOMAIN" >/dev/null 2>&1; then
-            # Check if routing was already successful or retry
-            true
-        fi
-        echo -e " ${G}Routed!${N}"
-        
-        # Configuration file generation
-        cat > /root/conf.yml << CF
+        if [ "$AUTO_MODE" = true ]; then
+            if [ -n "$CF_TUNNEL_ID" ] && [ -n "$CF_TUNNEL_CREDENTIALS" ] && [ -n "$CF_DOMAIN" ]; then
+                mkdir -p /root/.cloudflared
+                echo "$CF_TUNNEL_CREDENTIALS" > "/root/.cloudflared/$CF_TUNNEL_ID.json"
+                
+                cat > /root/conf.yml << CF
+tunnel: $CF_TUNNEL_ID
+credentials-file: /root/.cloudflared/$CF_TUNNEL_ID.json
+ingress:
+  - hostname: $CF_DOMAIN
+    service: http://127.0.0.1:$PORT
+  - service: http_status:443
+CF
+                killall cloudflared 2>/dev/null || true
+                nohup /root/cloudflared tunnel --config /root/conf.yml run > /tmp/cf.log 2>&1 &
+                DOMAIN="$CF_DOMAIN"
+            elif [ -n "$CF_TUNNEL_TOKEN" ] && [ -n "$CF_DOMAIN" ]; then
+                killall cloudflared 2>/dev/null || true
+                nohup /root/cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" > /tmp/cf.log 2>&1 &
+                DOMAIN="$CF_DOMAIN"
+            else
+                echo -e "${R}[!] Missing Cloudflare tunnel configuration in auto mode.${N}"
+                exit 1
+            fi
+        else
+            print_header
+            # Check Cloudflare credentials
+            if [ ! -f /root/.cloudflared/cert.pem ]; then
+                echo -e "${Y}[*] Cloudflare authentication required. Please follow the login prompt:${N}"
+                /root/cloudflared tunnel login
+            fi
+            
+            echo -e "\n${C}>>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<${N}"
+            read -p " Domain: " raw_domain
+            DOMAIN=$(echo "$raw_domain" | xargs)
+            
+            if [ -z "$DOMAIN" ]; then
+                echo -e "${R}[!] Domain cannot be empty.${N}"
+                exit 1
+            fi
+            
+            TNAME="zed-$(date +%s)"
+            echo -ne "${Y}[*] Creating Tunnel (${TNAME})...${N}"
+            /root/cloudflared tunnel create "$TNAME" >/dev/null 2>&1 &
+            spinner $!
+            
+            TID=$(/root/cloudflared tunnel list | grep "$TNAME" | awk '{print $1}' | head -n1)
+            if [ -z "$TID" ]; then
+                echo -e " ${R}FAILED${N}"
+                echo -e "${R}[!] Failed to create tunnel.${N}"
+                exit 1
+            fi
+            echo -e " ${G}Created! (ID: $TID)${N}"
+            
+            echo -ne "${Y}[*] Routing DNS for ${DOMAIN}...${N}"
+            /root/cloudflared tunnel route dns -f "$TID" "$DOMAIN" >/dev/null 2>&1 &
+            spinner $!
+            
+            if ! /root/cloudflared tunnel route dns -f "$TID" "$DOMAIN" >/dev/null 2>&1; then
+                # Check if routing was already successful or retry
+                true
+            fi
+            echo -e " ${G}Routed!${N}"
+            
+            # Configuration file generation
+            cat > /root/conf.yml << CF
 tunnel: $TID
 credentials-file: /root/.cloudflared/$TID.json
 ingress:
@@ -238,10 +264,11 @@ ingress:
     service: http://127.0.0.1:$PORT
   - service: http_status:443
 CF
-        
-        # Start Tunnel
-        killall cloudflared 2>/dev/null || true
-        nohup /root/cloudflared tunnel --config /root/conf.yml run >/dev/null 2>&1 &
+            
+            # Start Tunnel
+            killall cloudflared 2>/dev/null || true
+            nohup /root/cloudflared tunnel --config /root/conf.yml run >/dev/null 2>&1 &
+        fi
         
         LINK="vless://${UUID}@188.114.96.6:443?encryption=none&security=tls&sni=$DOMAIN&fp=random&alpn=http%2F1.1&type=ws&host=$DOMAIN&path=%2F#zed-Personal"
         ;;

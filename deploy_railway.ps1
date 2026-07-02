@@ -140,6 +140,106 @@ Write-Host "❯ Compiling and deploying container (this may take a moment)..." -
 # Ensure the zed-tunnel service exists in the project
 & railway add --service zed-tunnel 2>$null >$null
 
+# Prompt for Cloudflare Tunnel Configuration
+Write-Host ""
+Write-Host "❯ Select Cloudflare Tunnel Mode for Server/Container:" -ForegroundColor Cyan
+Write-Host "  [1] Free Cloudflare Tunnel (TryCloudflare - Temporary/Default)" -ForegroundColor Green
+Write-Host "  [2] Personal Tunnel (Custom Domain - Requires Cloudflare Tunnel Token)" -ForegroundColor Yellow
+
+while ($true) {
+    $cfMode = Read-Host "  👉 Choice [1-2]"
+    
+    if ($cfMode -eq "1" -or $cfMode -eq "۱" -or -not $cfMode) {
+        Write-Host "❯ Configuring TryCloudflare..." -ForegroundColor Yellow
+        & railway variable set TUNNEL_MODE=1 --service zed-tunnel 2>&1 >$null
+        break
+    } elseif ($cfMode -eq "2" -or $cfMode -eq "۲") {
+        Write-Host ""
+        Write-Host "❯ Personal Tunnel Authentication:" -ForegroundColor Cyan
+        Write-Host "  [1] Automate Setup (Login & Create Tunnel locally)" -ForegroundColor Green
+        Write-Host "  [2] Manual Setup (Enter Tunnel Token & Domain)" -ForegroundColor Yellow
+        
+        while ($true) {
+            $cfAuthChoice = Read-Host "  👉 Choice [1-2]"
+            
+            if ($cfAuthChoice -eq "1" -or $cfAuthChoice -eq "۱") {
+                # Ensure cloudflared is available locally
+                $cloudflaredBin = "cloudflared"
+                if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
+                    if (Test-Path ".\cloudflared.exe") {
+                        $cloudflaredBin = ".\cloudflared.exe"
+                    } else {
+                        Write-Host "❯ Cloudflared is not installed locally. Downloading portable version..." -ForegroundColor Yellow
+                        Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile ".\cloudflared.exe"
+                        $cloudflaredBin = ".\cloudflared.exe"
+                    }
+                }
+                
+                Write-Host "[*] Cloudflare authentication required. Please follow the login prompt:" -ForegroundColor Yellow
+                Start-Process $cloudflaredBin -ArgumentList "tunnel login" -NoNewWindow -Wait
+                
+                Write-Host ""
+                Write-Host ">>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<" -ForegroundColor Cyan
+                $cfDomain = Read-Host " Domain"
+                $cfDomain = $cfDomain.Trim()
+                
+                if (-not $cfDomain) {
+                    Write-Host "[!] Domain cannot be empty." -ForegroundColor Red
+                    Exit 1
+                }
+                
+                $tName = "zed-railway-" + (Get-Date -UFormat %s)
+                Write-Host "[*] Creating Tunnel ($tName)..." -ForegroundColor Yellow
+                Start-Process $cloudflaredBin -ArgumentList "tunnel create $tName" -NoNewWindow -Wait
+                
+                $tList = & $cloudflaredBin tunnel list
+                $tId = $null
+                foreach ($line in $tList) {
+                    if ($line -match $tName) {
+                        $tId = ($line -split "\s+")[0]
+                        break
+                    }
+                }
+                
+                if (-not $tId) {
+                    Write-Host "[!] Failed to retrieve Tunnel ID." -ForegroundColor Red
+                    Exit 1
+                }
+                
+                Write-Host "[*] Routing DNS for $cfDomain..." -ForegroundColor Yellow
+                Start-Process $cloudflaredBin -ArgumentList "tunnel route dns -f $tId $cfDomain" -NoNewWindow -Wait
+                
+                $credPath = Join-Path $env:USERPROFILE ".cloudflared\$tId.json"
+                if (-not (Test-Path $credPath)) {
+                    Write-Host "[!] Credentials file not found at $credPath" -ForegroundColor Red
+                    Exit 1
+                }
+                $cfCredContent = Get-Content -Raw -Path $credPath
+                
+                Write-Host "❯ Uploading Cloudflare Tunnel configuration to Railway..." -ForegroundColor Yellow
+                & railway variable set TUNNEL_MODE=2 CF_TUNNEL_ID="$tId" CF_TUNNEL_CREDENTIALS="$cfCredContent" CF_DOMAIN="$cfDomain" --service zed-tunnel 2>&1 >$null
+                break
+            } elseif ($cfAuthChoice -eq "2" -or $cfAuthChoice -eq "۲") {
+                $cfToken = Read-Host "  👉 Enter your Cloudflare Tunnel Token"
+                $cfDomain = Read-Host "  👉 Enter your Custom Domain (e.g., vpn.yourdomain.com)"
+                
+                if ($cfToken -and $cfDomain) {
+                    Write-Host "❯ Setting Personal Tunnel variables on Railway..." -ForegroundColor Yellow
+                    & railway variable set TUNNEL_MODE=2 CF_TUNNEL_TOKEN="$cfToken" CF_DOMAIN="$cfDomain" --service zed-tunnel 2>&1 >$null
+                    break
+                } else {
+                    Write-Host "✖ Token and Domain cannot be empty." -ForegroundColor Red
+                }
+            } else {
+                Write-Host "✖ Invalid choice. Please enter 1 or 2." -ForegroundColor Red
+            }
+        }
+        break
+    } else {
+        Write-Host "✖ Invalid choice. Please enter 1 or 2." -ForegroundColor Red
+    }
+}
+
 $maxDeployRetries = 3
 $deployRetry = 1
 $deploySuccess = $false
