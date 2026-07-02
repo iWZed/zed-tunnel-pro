@@ -1,0 +1,5 @@
+cloudflared
+cloudflared.exe
+.git
+.github
+*.log
