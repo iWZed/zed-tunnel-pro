@@ -186,7 +186,7 @@ Start-Sleep -Seconds 15
 
 $vlessLink = $null
 $retries = 0
-$maxRetries = 20
+$maxRetries = 50
 
 while ($retries -lt $maxRetries) {
     $logs = & railway logs 2>$null

@@ -173,7 +173,7 @@ sleep 15
 
 VLESS_LINK=""
 retries=0
-max_retries=20
+max_retries=50
 
 while [ $retries -lt $max_retries ]; do
     # Fetch logs and grep the VLESS protocol link
