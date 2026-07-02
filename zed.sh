@@ -14,14 +14,15 @@ G='\033[32m'   # Green
 Y='\033[33m'   # Yellow
 R='\033[31m'   # Red
 B='\033[1;34m' # Bold Blue
+W='\033[1;37m' # Bold White
 N='\033[0m'    # Reset
 
 # UI FUNCTIONS
 print_header() {
     clear
-    echo -e "${B}====================================================${N}"
-    echo -e "   ${C}Z E D   P R O   |   N E T W O R K   A U T O${N}"
-    echo -e "${B}====================================================${N}"
+    echo -e "${C}┌──────────────────────────────────────────────────────────┐${N}"
+    echo -e "${C}│${N}   🚀 ${W}Z E D T U N N E L   P R O${N}   |   ${C}N E T W O R K   A U T O${N}   ${C}│${N}"
+    echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
 }
 
 # Optimized spinner using kill -0 instead of heavy ps/grep pipe
@@ -129,10 +130,11 @@ nohup /usr/local/bin/xray -config /usr/local/etc/xray/config.json >/dev/null 2>&
 if [ "$AUTO_MODE" = true ]; then
     mode="1"
 else
-    echo -e "\n${B}Select Cloudflare Tunnel Mode:${N}"
-    echo -e " ${G}1)${N} Free Cloudflare Tunnel (TryCloudflare - No Domain/Account)"
-    echo -e " ${G}2)${N} Personal Tunnel (Custom Domain + Cloudflare Auth)"
-    read -p " Select Mode [1-2]: " mode_raw
+    echo -e "\n${W}┌── SELECT CLOUDFLARE TUNNEL MODE ─────────────────────────┐${N}"
+    echo -e "${W}│${N}  ${G}1)${N} Free Cloudflare Tunnel (TryCloudflare - Temporary)    ${W}│${N}"
+    echo -e "${W}│${N}  ${G}2)${N} Personal Tunnel (Custom Domain - Requires Login)      ${W}│${N}"
+    echo -e "${W}└──────────────────────────────────────────────────────────┘${N}"
+    read -p " 👉 Select Option [1-2]: " mode_raw
     mode=$(echo "$mode_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
 fi
 
@@ -252,27 +254,29 @@ if [ "$AUTO_MODE" = true ]; then
     # Append VLESS banner display to .bashrc so it shows on every terminal login
     cat << EOF >> /root/.bashrc
 
-echo -e "${B}====================================================${N}"
-echo -e " ${G}ZED PRO | VLESS CONNECTION LINK IS READY:${N}"
-echo -e "${B}====================================================${N}"
-echo -e "${C}${LINK}${N}"
-echo -e "${B}====================================================${N}"
-echo -e "${Y}[*] Note: Replace the IP address with a clean Cloudflare IP if needed.${N}\n"
+echo -e "${C}┌──────────────────────────────────────────────────────────┐${N}"
+echo -e "${C}│${N}   🎉 ${G}SUCCESS! Your VLESS connection link is ready:      ${C}│${N}"
+echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
+echo -e "${W}${LINK}${N}"
+echo -e "${C}────────────────────────────────────────────────────────────${N}"
+echo -e "${Y}[*] Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}\n"
 EOF
 
     # Print to Docker logs stdout
-    echo -e "\n${B}====================================================${N}"
-    echo -e " ${G}SUCCESS!${N} Your VLESS link is ready."
-    echo -e "${B}====================================================${N}"
-    echo -e "${C}${LINK}${N}"
-    echo -e "${B}====================================================${N}\n"
+    echo -e "\n${C}┌──────────────────────────────────────────────────────────┐${N}"
+    echo -e "${C}│${N}   🎉 ${G}SUCCESS! Your VLESS connection link is ready:      ${C}│${N}"
+    echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
+    echo -e "${W}${LINK}${N}"
+    echo -e "${C}────────────────────────────────────────────────────────────${N}\n"
 else
-    echo -e "\n${B}====================================================${N}"
-    echo -e " ${G}SUCCESS!${N} Your VLESS link is ready for deployment."
-    echo -e "${B}====================================================${N}"
-    echo -e "${C}${LINK}${N}"
-    echo -e "${B}====================================================${N}\n"
+    print_header
+    echo -e "\n${C}┌──────────────────────────────────────────────────────────┐${N}"
+    echo -e "${C}│${N}   🎉 ${G}SUCCESS! Your VLESS connection link is ready:      ${C}│${N}"
+    echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
+    echo -e "${W}${LINK}${N}"
+    echo -e "${C}────────────────────────────────────────────────────────────${N}"
     echo -e "${Y}[*] Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}"
     echo -e "${Y}[*] Background tunnel running. Logs saved to /tmp/cf.log${N}\n"
 fi
+
 
