@@ -51,7 +51,8 @@ if [ $? -eq 0 ] && [ -n "$USER_INFO" ]; then
     echo -e "\n${C}❯ Account Action:${N}"
     echo -e "  ${G}[1]${N} Continue with this account"
     echo -e "  ${R}[2]${N} Log out and switch accounts"
-    read -p "  👉 Choice [1-2]: " auth_opt
+    read -p "  👉 Choice [1-2]: " auth_opt_raw
+    auth_opt=$(echo "$auth_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹' '0123456789')
     
     if [ "$auth_opt" = "2" ] || [[ "$auth_opt" =~ ^[nN] ]] || [ "$auth_opt" = "logout" ]; then
         echo -e "${Y}❯ Logging out...${N}"
