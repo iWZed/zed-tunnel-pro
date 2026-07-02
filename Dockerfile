@@ -23,7 +23,12 @@ RUN wget -qO /bin/ttyd https://github.com/tsl0922/ttyd/releases/download/1.7.3/t
     chmod +x /bin/ttyd
 
 # Pre-install Xray core to speed up container boot time
-RUN bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
+    wget -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip && \
+    unzip -q /tmp/xray.zip -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/xray && \
+    rm -rf /tmp/xray.zip && \
+    rm -rf /var/lib/apt/lists/*
 
 # Pre-install Cloudflared binary
 RUN curl -L -s https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /root/cloudflared && \
