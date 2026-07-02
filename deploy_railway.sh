@@ -21,58 +21,71 @@ N='\033[0m'    # Reset
 
 print_header() {
     clear
-    echo -e "${C}┌──────────────────────────────────────────────────────────┐${N}"
-    echo -e "${C}│${N}   🚀 ${W}Z E D T U N N E L   P R O${N}   |   ${C}R A I L W A Y   A U T O${N}  ${C}│${N}"
-    echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
+    echo -e "${C}⚡ ZEDTUNNEL PRO ${N}• ${W}RAILWAY AUTOMATION TOOL${N}\n"
 }
 
 print_header
 
 # 1. CHECK RAILWAY CLI INSTALLATION
 if ! command -v railway &> /dev/null; then
-    echo -e "${Y}[*] Railway CLI is not installed in system PATH.${N}"
-    echo -e "${Y}[*] Attempting automatic installation via official installer...${N}"
+    echo -e "${Y}❯ Railway CLI is not installed in system PATH.${N}"
+    echo -e "${Y}❯ Attempting automatic installation via official installer...${N}"
     curl -fsSL https://railway.app/install.sh | sh
     
     # Check again after install
     if ! command -v railway &> /dev/null; then
-        echo -e "${R}[!] Installation failed or PATH is not configured.${N}"
-        echo -e "${Y}[*] Please install it manually or check permissions:${N}"
+        echo -e "${R}✖ Installation failed or PATH is not configured.${N}"
+        echo -e "${Y}❯ Please install it manually or check permissions:${N}"
         echo -e "    ${C}npm install -g @railway/cli${N} or ${C}curl -fsSL https://railway.app/install.sh | sh${N}"
         exit 1
     fi
-    echo -e "${G}[+] Railway CLI installed successfully!${N}"
+    echo -e "${G}✔ Railway CLI installed successfully!${N}"
 fi
 
 # 2. CHECK AUTHENTICATION STATUS
-echo -e "${Y}[*] Checking Railway credentials...${N}"
-if ! railway whoami &>/dev/null; then
-    echo -e "${Y}[*] Authentication required. Redirecting to login...${N}"
+echo -e "${Y}❯ Checking Railway credentials...${N}"
+USER_INFO=$(railway whoami 2>/dev/null)
+
+if [ $? -eq 0 ] && [ -n "$USER_INFO" ]; then
+    echo -e "${G}✔ Active Account: ${W}${USER_INFO}${N}"
+    echo -e "\n${C}❯ Account Action:${N}"
+    echo -e "  ${G}[y]${N} Continue with this account"
+    echo -e "  ${R}[n]${N} Log out and switch accounts"
+    read -p "  👉 Choice [y/n]: " auth_opt
+    
+    if [[ "$auth_opt" =~ ^[nNfF] ]] || [ "$auth_opt" = "logout" ]; then
+        echo -e "${Y}❯ Logging out...${N}"
+        railway logout >/dev/null 2>&1 || true
+        USER_INFO=""
+    fi
+fi
+
+if [ -z "$USER_INFO" ]; then
+    echo -e "${Y}❯ Starting Railway login process...${N}"
     railway login
     
     # Verify login again
     if ! railway whoami &>/dev/null; then
-        echo -e "${R}[!] Authentication failed. Please log in manually using 'railway login'.${N}"
+        echo -e "${R}✖ Authentication failed. Please log in manually using 'railway login'.${N}"
         exit 1
     fi
 fi
-echo -e "${G}[+] Authenticated successfully.${N}"
+echo -e "${G}✔ Authenticated successfully.${N}"
 
 # 3. INITIALIZE / LINK PROJECT
 if [ ! -d .railway ]; then
-    echo -e "${Y}[*] Initializing new Railway project...${N}"
-    echo -e "${C}┌── ACTION REQUIRED ───────────────────────────────────────┐${N}"
-    echo -e "${C}│${N}  👉 Please choose ${G}Empty Project${N} when prompted.            ${C}│${N}"
-    echo -e "${C}│${N}  👉 Set a name for your tunnel service (e.g. zed-tunnel). ${C}│${N}"
-    echo -e "${C}└──────────────────────────────────────────────────────────┘${N}\n"
+    echo -e "${Y}❯ Initializing new Railway project...${N}"
+    echo -e "\n${Y}⚠ ACTION REQUIRED:${N}"
+    echo -e "  1. Select ${G}Empty Project${N} when prompted."
+    echo -e "  2. Name your service (e.g., ${C}zed-tunnel${N}).\n"
     railway init
     
     if [ ! -d .railway ]; then
-        echo -e "${R}[!] Project initialization aborted.${N}"
+        echo -e "${R}✖ Project initialization aborted.${N}"
         exit 1
     fi
 else
-    echo -e "${G}[+] Linked Railway project found.${N}"
+    echo -e "${G}✔ Linked Railway project found.${N}"
 fi
 
 # 4. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
@@ -117,27 +130,22 @@ echo ""
 
 # 7. DISPLAY FINAL OUTPUT BANNERS
 print_header
-echo -e "\n${C}┌──────────────────────────────────────────────────────────┐${N}"
-echo -e "${C}│${N}   🎉 ${G}SUCCESS! Your ZedTunnel Pro is running on Railway. ${N}   ${C}│${N}"
-echo -e "${C}└──────────────────────────────────────────────────────────┘${N}"
+echo -e "\n🎉 ${G}SUCCESS! Your ZedTunnel Pro is running on Railway.${N}\n"
 
 if [ -n "$VLESS_LINK" ]; then
-    echo -e "\n${W}🔗 YOUR VLESS CONNECTION LINK:${N}"
-    echo -e "${C}${VLESS_LINK}${N}"
-    echo -e "${C}────────────────────────────────────────────────────────────${N}"
+    echo -e "${W}🔗 YOUR VLESS CONNECTION LINK:${N}"
+    echo -e "${C}${VLESS_LINK}${N}\n"
 else
-    echo -e "\n${R}[!] Could not automatically fetch the link from logs.${N}"
-    echo -e "${Y}[*] Please view service logs manually to copy the link:${N}"
-    echo -e "    ${C}railway logs${N}"
-    echo -e "${C}────────────────────────────────────────────────────────────${N}"
+    echo -e "${R}✖ Could not automatically fetch the link from logs.${N}"
+    echo -e "${Y}❯ Please view service logs manually to copy the link:${N}"
+    echo -e "    ${C}railway logs${N}\n"
 fi
 
 if [ -n "$DOMAIN_NAME" ]; then
-    echo -e "\n${W}🌐 WEB TERMINAL CONTROL PANEL:${N}"
+    echo -e "${W}🌐 WEB TERMINAL CONTROL PANEL:${N}"
     echo -e "   URL:      ${C}https://${DOMAIN_NAME}${N}"
     echo -e "   Username: ${Y}admin${N}"
-    echo -e "   Password: ${Y}zed123${N}"
-    echo -e "${C}────────────────────────────────────────────────────────────${N}"
+    echo -e "   Password: ${Y}zed123${N}\n"
 fi
 
-echo -e "${Y}[*] The tunnel runs 24/7 in the background on Railway.${N}\n"
+echo -e "${Y}❯ The tunnel runs 24/7 in the background on Railway.${N}\n"
