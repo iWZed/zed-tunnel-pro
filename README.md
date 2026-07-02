@@ -60,15 +60,15 @@ Before deploying, you can configure these variables in the Railway dashboard:
 
 ## 🚀 Usage on VPS | نحوه استفاده و اجرا روی سرور مجازی
 
-To run the script on a standard VPS, execute the following command:
-
-برای اجرای اسکریپت روی یک سرور مجازی معمولی، دستور زیر را در ترمینال سرور خود اجرا کنید:
-
+### Method 1: Direct execution (One-Liner) | روش اول: اجرای مستقیم خط فرمان
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/iWZed/zed-tunnel-pro/main/zed.sh)"
 ```
 
-*Note: You can run this command directly to deploy the tunnel on any Linux VPS.*
+### Method 2: Git Clone (Alternative / Fallback) | روش دوم: کلون پروژه (روش جایگزین در صورت اختلال در دانلود مستقیم)
+```bash
+git clone https://github.com/iWZed/zed-tunnel-pro.git && cd zed-tunnel-pro && bash zed.sh
+```
 
 ---
 
