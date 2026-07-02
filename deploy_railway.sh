@@ -130,10 +130,28 @@ fi
 
 # 4. DEPLOY TO RAILWAY
 echo -e "${Y}❯ Compiling and deploying container (this may take a moment)...${N}"
-railway up --ci
 
-if [ $? -ne 0 ]; then
-    echo -e "${R}✖ Deployment failed due to network timeout or connection issues.${N}"
+max_deploy_retries=3
+deploy_retry=1
+deploy_success=false
+
+while [ $deploy_retry -le $max_deploy_retries ]; do
+    railway up --ci
+    if [ $? -eq 0 ]; then
+        deploy_success=true
+        break
+    else
+        echo -e "${R}✖ Attempt $deploy_retry failed.${N}"
+        if [ $deploy_retry -lt $max_deploy_retries ]; then
+            echo -e "${Y}❯ Retrying deployment in 5 seconds (attempt $((deploy_retry+1))/$max_deploy_retries)...${N}"
+            sleep 5
+        fi
+    fi
+    deploy_retry=$((deploy_retry+1))
+done
+
+if [ "$deploy_success" = false ]; then
+    echo -e "${R}✖ Deployment failed after $max_deploy_retries attempts due to network timeout or connection issues.${N}"
     echo -e "${Y}❯ Note: If you are in Iran, you might need to use a proxy/VPN to run Railway CLI commands.${N}"
     exit 1
 fi
