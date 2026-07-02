@@ -34,11 +34,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
 RUN curl -L -s https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /root/cloudflared && \
     chmod +x /root/cloudflared
 
-# Copy setup and entrypoint scripts
+# Copy setup, welcome, and entrypoint scripts
 COPY zed.sh /root/zed.sh
+COPY welcome.sh /root/welcome.sh
 COPY entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /root/zed.sh /entrypoint.sh
+RUN chmod +x /root/zed.sh /root/welcome.sh /entrypoint.sh
 
 # Configure neofetch and shell environment
 RUN echo "neofetch" >> /root/.bashrc && \
