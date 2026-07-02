@@ -49,11 +49,11 @@ USER_INFO=$(railway whoami 2>/dev/null)
 if [ $? -eq 0 ] && [ -n "$USER_INFO" ]; then
     echo -e "${G}✔ Active Account: ${W}${USER_INFO}${N}"
     echo -e "\n${C}❯ Account Action:${N}"
-    echo -e "  ${G}[y]${N} Continue with this account"
-    echo -e "  ${R}[n]${N} Log out and switch accounts"
-    read -p "  👉 Choice [y/n]: " auth_opt
+    echo -e "  ${G}[1]${N} Continue with this account"
+    echo -e "  ${R}[2]${N} Log out and switch accounts"
+    read -p "  👉 Choice [1-2]: " auth_opt
     
-    if [[ "$auth_opt" =~ ^[nNfF] ]] || [ "$auth_opt" = "logout" ]; then
+    if [ "$auth_opt" = "2" ] || [[ "$auth_opt" =~ ^[nN] ]] || [ "$auth_opt" = "logout" ]; then
         echo -e "${Y}❯ Logging out...${N}"
         railway logout >/dev/null 2>&1 || true
         USER_INFO=""
