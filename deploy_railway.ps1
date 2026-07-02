@@ -333,4 +333,4 @@ if ($domainName) {
 }
 
 Write-Host "❯ The tunnel runs 24/7 in the background on Railway." -ForegroundColor Yellow
-Write-Host ""
+Write-Host "❯ Join our Telegram channel: https://t.me/iWZedLabs" -ForegroundColor Cyan

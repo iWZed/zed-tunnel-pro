@@ -35,7 +35,8 @@ LINK=$(cat /root/vless.txt)
 
 echo -e "\n🎉 ${G}SUCCESS! Your VLESS connection link is ready:${N}"
 echo -e "${W}${LINK}${N}\n"
-echo -e "${Y}❯ Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}\n"
+echo -e "${Y}❯ Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}"
+echo -e "${Y}❯ Join our Telegram channel: ${C}https://t.me/iWZedLabs${N}\n"
 
 # Drop into normal interactive bash shell
 exec /bin/bash

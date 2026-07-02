@@ -323,4 +323,5 @@ if [ -n "$DOMAIN_NAME" ]; then
     echo -e "   Password: ${Y}zed123${N}\n"
 fi
 
-echo -e "${Y}❯ The tunnel runs 24/7 in the background on Railway.${N}\n"
+echo -e "${Y}❯ The tunnel runs 24/7 in the background on Railway.${N}"
+echo -e "${Y}❯ Join our Telegram channel: ${C}https://t.me/iWZedLabs${N}\n"

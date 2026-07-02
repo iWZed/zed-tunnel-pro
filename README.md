@@ -4,6 +4,7 @@
 [![Xray-core](https://img.shields.io/badge/Xray--core-Latest-orange.svg)](https://github.com/XTLS/Xray-core)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-blueviolet.svg)](https://cloudflare.com)
 [![Platform](https://img.shields.io/badge/Platform-Debian%20%2F%20Ubuntu-green.svg)](#)
+[![Telegram](https://img.shields.io/badge/Telegram-Channel-blue.svg?logo=telegram)](https://t.me/iWZedLabs)
 [![Developer](https://img.shields.io/badge/Developer-zed-red.svg)](#)
 
 An automated script to set up a secure VLESS-over-WebSocket tunnel using Xray and Cloudflare Tunnels (supporting both free TryCloudflare and personal custom domains). It routes traffic through clean Cloudflare CDN IPs to bypass network censorship.
@@ -135,6 +136,15 @@ graph TD
 The generated VLESS configuration link uses `188.114.96.6` as the connection address. You can replace this IP in your client app (e.g., v2rayN, Shadowrocket, Streisand, v2rayNG, Nekobox) with any other **clean Cloudflare IP** scanned from your local network provider for optimal performance.
 
 لینک VLESS تولیدشده به صورت پیش‌فرض از آی‌پی `188.114.96.6` استفاده می‌کند. شما می‌توانید این آی‌پی را در نرم‌افزارهای کلاینت خود (مانند v2rayNG یا Nekobox) با هر **آی‌پی تمیز کلودفلر** دیگری که از شبکه خود اسکن کرده‌اید جایگزین کنید تا بهترین سرعت و پایداری را دریافت نمایید.
+
+---
+
+## 📢 Telegram Channel | کانال تلگرام
+
+For updates, clean IPs, and support, join our Telegram channel:
+برای دریافت آخرین آپدیت‌ها، آی‌پی‌های تمیز و پشتیبانی، به کانال تلگرام ما بپیوندید:
+
+👉 [iWZedLabs Telegram Channel](https://t.me/iWZedLabs)
 
 ---
 

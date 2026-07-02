@@ -286,19 +286,22 @@ if [ "$AUTO_MODE" = true ]; then
     # Append VLESS banner display to .bashrc so it shows on every terminal login
     cat << EOF >> /root/.bashrc
 
-echo -e "\n🎉 ${G}SUCCESS! Your VLESS connection link is ready:${N}"
-echo -e "${W}${LINK}${N}\n"
-echo -e "${Y}❯ Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}\n"
+echo -e "\n🎉 \${G}SUCCESS! Your VLESS connection link is ready:\${N}"
+echo -e "\${W}\${LINK}\${N}\n"
+echo -e "\${Y}❯ Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.\${N}"
+echo -e "\${Y}❯ Join our Telegram channel: \${C}https://t.me/iWZedLabs\${N}\n"
 EOF
 
     # Print to Docker logs stdout
     echo -e "\n🎉 ${G}SUCCESS! Your VLESS connection link is ready:${N}"
     echo -e "${W}${LINK}${N}\n"
+    echo -e "${Y}❯ Join our Telegram channel: ${C}https://t.me/iWZedLabs${N}\n"
 else
     print_header
     echo -e "\n🎉 ${G}SUCCESS! Your VLESS connection link is ready:${N}"
     echo -e "${W}${LINK}${N}\n"
     echo -e "${Y}❯ Note: Scan/use clean Cloudflare IPs (e.g. 188.114.96.6) for optimal routing.${N}"
+    echo -e "${Y}❯ Join our Telegram channel: ${C}https://t.me/iWZedLabs${N}"
     echo -e "${Y}❯ Background tunnel running. Logs saved to /tmp/cf.log${N}\n"
 fi
 
