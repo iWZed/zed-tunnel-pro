@@ -2,6 +2,12 @@
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Add local user bin paths for Linux/macOS compatibility testing
+$localPath = Join-Path $env:HOME ".railway/bin"
+if (Test-Path $localPath) {
+    $env:PATH = "$localPath" + [IO.Path]::PathSeparator + $env:PATH
+}
+
 Clear-Host
 Write-Host "⚡ ZEDTUNNEL PRO • RAILWAY AUTOMATION TOOL (WINDOWS)" -ForegroundColor Cyan
 Write-Host "────────────────────────────────────────────────────────────" -ForegroundColor Cyan
@@ -130,6 +136,9 @@ if (-not $linked) {
 
 # 4. DEPLOY TO RAILWAY
 Write-Host "❯ Compiling and deploying container (this may take a moment)..." -ForegroundColor Yellow
+
+# Ensure the zed-tunnel service exists in the project
+& railway add --service zed-tunnel 2>$null >$null
 
 $maxDeployRetries = 3
 $deployRetry = 1

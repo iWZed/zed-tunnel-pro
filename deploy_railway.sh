@@ -131,6 +131,9 @@ fi
 # 4. DEPLOY TO RAILWAY
 echo -e "${Y}❯ Compiling and deploying container (this may take a moment)...${N}"
 
+# Ensure the zed-tunnel service exists in the project
+railway add --service zed-tunnel >/dev/null 2>&1 || true
+
 max_deploy_retries=3
 deploy_retry=1
 deploy_success=false
