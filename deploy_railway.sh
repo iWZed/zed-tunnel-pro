@@ -178,7 +178,7 @@ max_retries=20
 while [ $retries -lt $max_retries ]; do
     # Fetch logs and grep the VLESS protocol link
     LOGS=$(railway logs 2>/dev/null)
-    VLESS_LINK=$(echo "$LOGS" | grep -oE 'vless://[a-zA-Z0-9?&=-_%#.]+' | head -n1)
+    VLESS_LINK=$(echo "$LOGS" | grep -oE 'vless://[a-zA-Z0-9?&=-_%#.@:/]+' | head -n1)
     
     if [ -n "$VLESS_LINK" ]; then
         break

@@ -191,7 +191,7 @@ $maxRetries = 20
 while ($retries -lt $maxRetries) {
     $logs = & railway logs 2>$null
     foreach ($line in $logs) {
-        if ($line -match 'vless://[a-zA-Z0-9?&=-_%#.]+') {
+        if ($line -match 'vless://[a-zA-Z0-9?&=-_%#.@:/]+') {
             $vlessLink = $Matches[0]
             break
         }
