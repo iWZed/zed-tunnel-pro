@@ -82,7 +82,40 @@ fi
 echo -e "${G}✔ Authenticated successfully.${N}"
 
 # 3. INITIALIZE / LINK PROJECT
-if ! railway status &>/dev/null; then
+LINKED=false
+if railway status &>/dev/null; then
+    LINKED=true
+    PROJECT_NAME=$(railway status 2>/dev/null | grep -i 'Project:' | head -n1 | sed 's/[Pp]roject://g' | xargs)
+    [ -z "$PROJECT_NAME" ] && PROJECT_NAME="Active Project"
+    echo -e "${G}✔ Linked Project: ${W}${PROJECT_NAME}${N}"
+    
+    while true; do
+        echo -e "\n${C}❯ Project Action:${N}"
+        echo -e "  ${G}[1]${N} Continue with this project"
+        echo -e "  ${Y}[2]${N} Unlink directory from this project"
+        echo -e "  ${R}[3]${N} Delete this project permanently"
+        read -p "  👉 Choice [1-3]: " proj_opt_raw
+        proj_opt=$(echo "$proj_opt_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
+        
+        if [ "$proj_opt" = "1" ]; then
+            break
+        elif [ "$proj_opt" = "2" ]; then
+            echo -e "${Y}❯ Unlinking project...${N}"
+            railway unlink >/dev/null 2>&1 || true
+            LINKED=false
+            break
+        elif [ "$proj_opt" = "3" ]; then
+            echo -e "${R}⚠ DELETING PROJECT PERMANENTLY...${N}"
+            railway delete --project "$PROJECT_NAME"
+            LINKED=false
+            break
+        else
+            echo -e "${R}✖ Invalid choice: '$proj_opt_raw'. Please enter 1, 2, or 3.${N}"
+        fi
+    done
+fi
+
+if [ "$LINKED" = false ]; then
     echo -e "${Y}❯ Initializing new Railway project...${N}"
     echo -e "\n${Y}⚠ ACTION REQUIRED:${N}"
     echo -e "  1. Select ${G}Empty Project${N} when prompted."
@@ -93,8 +126,6 @@ if ! railway status &>/dev/null; then
         echo -e "${R}✖ Project initialization aborted.${N}"
         exit 1
     fi
-else
-    echo -e "${G}✔ Linked Railway project found.${N}"
 fi
 
 # 4. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
