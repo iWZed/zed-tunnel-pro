@@ -26,35 +26,40 @@ An automated script to set up a secure VLESS-over-WebSocket tunnel using Xray an
 
 ## 📋 Prerequisites | پیش‌نیازها
 
-* A Linux Virtual Private Server (VPS) running **Debian** or **Ubuntu**.
-* `root` privileges.
-* An active internet connection on the VPS.
+* A Linux Virtual Private Server (VPS) or local machine.
+* `root` privileges (for VPS usage).
+* An active internet connection.
 
 ---
 
-## 🚂 One-Click Deploy to Railway | استقرار آسان روی ریل‌وی
+## 🚂 Railway Deployment | استقرار روی ریل‌وی
 
-You can deploy ZedTunnel Pro directly to **Railway** for free with a single click. The script runs automatically in the background on startup.
+You can deploy ZedTunnel Pro to **Railway** for free. The script runs automatically in the background on startup.
 
-می‌توانید با استفاده از دکمه زیر پروژه را مستقیماً روی **Railway** به صورت رایگان مستقر کنید. اسکریپت به صورت خودکار در پس‌زمینه اجرا می‌شود.
+می‌توانید پروژه را روی **Railway** به صورت رایگان مستقر کنید. اسکریپت به صورت خودکار در پس‌زمینه اجرا می‌شود.
+
+### Method 1: Web Interface | روش اول: از طریق پنل وب ریل‌وی
+Click the button below to deploy:
+برای دیپلوی روی دکمه زیر کلیک کنید:
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/new/template?template=https://github.com/iWZed/zed-tunnel-pro)
 
-### ⚙️ Environment Variables | متغیرهای محیطی
+#### ⚙️ Environment Variables | متغیرهای محیطی
 Before deploying, you can configure these variables in the Railway dashboard:
-
-قبل از دیپلوی، می‌توانید این متغیرها را در پنل ریل‌وی تنظیم کنید:
 * `USERNAME`: Web terminal login username (Default: `admin`)
 * `PASSWORD`: Web terminal login password (Default: `zed123`)
 
-### 🔑 How to Get Your Link | نحوه دریافت لینک اتصال
+#### 🔑 How to Get Your Link | نحوه دریافت لینک اتصال
 1. Once deployment is complete, open the **Public Domain URL** provided by Railway.
 2. Log in using your configured `USERNAME` and `PASSWORD`.
-3. Your VLESS connection link will be printed on the screen automatically! (You can also find it in the deployment logs).
+3. Your VLESS connection link will be printed on the screen automatically!
 
-۱. پس از اتمام دیپلوی، وارد لینک دامنه عمومی (Public URL) که ریل‌وی به شما داده بشوید.
-۲. با یوزرنیم و پسورد مشخص‌شده لاگین کنید.
-۳. لینک اتصال VLESS شما به صورت خودکار روی صفحه چاپ خواهد شد! (همچنین می‌توانید آن را در بخش لاگ‌های ریل‌وی مشاهده کنید).
+### Method 2: Railway CLI (Fully Automated) | روش دوم: اجرای کاملاً خودکار با ابزار خط فرمان
+To deploy and automatically fetch your VLESS link directly in your local terminal, execute:
+برای دیپلوی خودکار و چاپ مستقیم لینک VLESS در ترمینال سیستم خود، دستور زیر را اجرا کنید:
+```bash
+git clone https://github.com/iWZed/zed-tunnel-pro.git && cd zed-tunnel-pro && bash deploy_railway.sh
+```
 
 ---
 
@@ -65,7 +70,7 @@ Before deploying, you can configure these variables in the Railway dashboard:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/iWZed/zed-tunnel-pro/main/zed.sh)"
 ```
 
-### Method 2: Git Clone (Alternative / Fallback) | روش دوم: کلون پروژه (روش جایگزین در صورت اختلال در دانلود مستقیم)
+### Method 2: Git Clone (Alternative / Fallback) | روش دوم: کلون پروژه
 ```bash
 git clone https://github.com/iWZed/zed-tunnel-pro.git && cd zed-tunnel-pro && bash zed.sh
 ```
@@ -102,6 +107,8 @@ graph TD
 * Best for quick tests and temporary connections.
 * Does not require a Cloudflare account or registration.
 * A random temporary subdomain (e.g., `xxx.trycloudflare.com`) is generated dynamically.
+* ⚠️ **Note:** TryCloudflare tunnels are temporary and typically expire within **12 to 24 hours**.
+* ⚠️ **توجه:** تونل‌های TryCloudflare موقت بوده و معمولاً بین **۱۲ تا ۲۴ ساعت** منقضی می‌شوند.
 
 ### 2️⃣ Personal Tunnel (Custom Domain)
 * Best for persistent, stable, and production-grade connections.
