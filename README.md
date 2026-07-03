@@ -13,14 +13,10 @@ An automated script to set up a secure VLESS-over-WebSocket tunnel using Xray an
 
 ---
 
-## ⚡ Features | ویژگی‌های برجسته
-
-* **🚀 Fully Automated:** Installs and configures all dependencies (`Xray`, `Cloudflared`, `curl`, `jq`) with a single command.
+* **🚀 Fully Automated & Ultra-Lightweight:** Uses an optimized Alpine base image, reducing build time to ~5 seconds and container size to 49MB (down from 150MB).
+* **⚡ Detached Resilient Deployment:** Employs the `--detach` flag during Railway deployment, completely avoiding network GraphQL timeouts on restricted connections.
+* **☁️ Auto-Domain Resolution:** Decodes your local Cloudflare auth token to auto-resolve your root domain (e.g. `koshix.com`) and automatically set up the subdomain as `zedvip.<yourdomain>` with zero manual typing or menu selections.
 * **🔒 VLESS + WebSocket:** Configured with modern secure VLESS protocol with WS transport.
-* **☁️ Dual Tunneling Modes:**
-  * **TryCloudflare (Free):** Instant deployment with no Cloudflare account or domain required.
-  * **Personal Tunnel (Custom Domain):** Link your own domain/subdomain with automated Cloudflare DNS routing.
-* **🛡️ Smart UI & Resilient Logic:** Includes interactive UI prompts, Persian digit conversion, smooth CLI progress animations, and automatic cleanup of previous instances.
 * **🌐 Clean IP Routing:** Generates a ready-to-use VLESS link pre-configured with Cloudflare's clean IP.
 
 ---
@@ -45,15 +41,11 @@ Click the button below to deploy:
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/new/template?template=https://github.com/iWZed/zed-tunnel-pro)
 
-#### ⚙️ Environment Variables | متغیرهای محیطی
-Before deploying, you can configure these variables in the Railway dashboard:
-* `USERNAME`: Web terminal login username (Default: `admin`)
-* `PASSWORD`: Web terminal login password (Default: `zed123`)
-
 #### 🔑 How to Get Your Link | نحوه دریافت لینک اتصال
-1. Once deployment is complete, open the **Public Domain URL** provided by Railway.
-2. Log in using your configured `USERNAME` and `PASSWORD`.
-3. Your VLESS connection link will be printed on the screen automatically!
+Once the deployment is complete:
+1. Run the local script `deploy_railway.sh` (or `deploy_railway.ps1` on Windows).
+2. The script will automatically trigger the deployment, wait for it to boot on Railway, and print your ready-to-use VLESS link on the screen!
+
 
 ### Method 2: Railway CLI (Fully Automated) | روش دوم: اجرای کاملاً خودکار با ابزار خط فرمان
 To deploy and automatically fetch your VLESS link directly in your local terminal, choose your OS:

@@ -175,18 +175,130 @@ while ($true) {
                     }
                 }
                 
-                Write-Host "[*] Cloudflare authentication required. Please follow the login prompt:" -ForegroundColor Yellow
-                Start-Process $cloudflaredBin -ArgumentList "tunnel login" -NoNewWindow -Wait
+                $certPath = Join-Path $env:USERPROFILE ".cloudflared\cert.pem"
+                if (Test-Path $certPath) {
+                    Write-Host "✔ Active Cloudflare authentication certificate detected. Skipping login..." -ForegroundColor Green
+                } else {
+                    Write-Host "[*] Cloudflare authentication required. Please follow the login prompt:" -ForegroundColor Yellow
+                    Start-Process $cloudflaredBin -ArgumentList "tunnel login" -NoNewWindow -Wait
+                }
                 
-                Write-Host ""
-                Write-Host ">>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<" -ForegroundColor Cyan
-                $cfDomain = Read-Host " Domain"
-                $cfDomain = $cfDomain.Trim()
+                # Resolve Cloudflare root zone domain from cert.pem
+                $zoneName = $null
+                $certPath = Join-Path $env:USERPROFILE ".cloudflared\cert.pem"
+                if (Test-Path $certPath) {
+                    try {
+                        $tokenContent = (Get-Content -Path $certPath | Where-Object { $_ -notmatch "ARGO TUNNEL TOKEN" }) -join ""
+                        # Decode base64
+                        $decodedBytes = [System.Convert]::FromBase64String($tokenContent)
+                        $decodedJson = [System.Text.Encoding]::UTF8.GetString($decodedBytes) | ConvertFrom-Json
+                        $zoneId = $decodedJson.zoneID
+                        $apiToken = $decodedJson.apiToken
+                        
+                        if ($zoneId -and $apiToken) {
+                            Write-Host "❯ Querying Cloudflare account domains..." -ForegroundColor Yellow
+                            $headers = @{
+                                "Authorization" = "Bearer $apiToken"
+                                "Content-Type" = "application/json"
+                            }
+                            $response = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId" -Headers $headers -TimeoutSec 10
+                            if ($response -and $response.result -and $response.result.name) {
+                                $zoneName = $response.result.name
+                                Write-Host "✔ Detected: $zoneName" -ForegroundColor Green
+                            }
+                        }
+                    } catch {
+                        Write-Host "✖ Failed to query Cloudflare API (using manual entry)" -ForegroundColor Red
+                    }
+                }
+
+                # Check for previously configured domain (locally first, then on Railway)
+                $prevDomain = $null
+                $localDomainFile = ".\.cf_domain"
+                if (Test-Path $localDomainFile) {
+                    $prevDomain = (Get-Content -Raw -Path $localDomainFile).Trim()
+                }
+                
+                if (-not $prevDomain) {
+                    $prevVarsJson = & railway variable list --service zed-tunnel --json 2>$null | ConvertFrom-Json
+                    if ($prevVarsJson -and $prevVarsJson.CF_DOMAIN) {
+                        $prevDomain = $prevVarsJson.CF_DOMAIN
+                    }
+                }
+                
+                $cfDomain = $null
+                if ($prevDomain) {
+                    Write-Host "❯ Detected previously configured domain: $prevDomain" -ForegroundColor Yellow
+                    $reuseOpt = Read-Host "  👉 Do you want to reuse this domain? [Y/n]"
+                    if ($reuseOpt -notmatch "^[nN]") {
+                        $cfDomain = $prevDomain
+                    }
+                }
                 
                 if (-not $cfDomain) {
-                    Write-Host "[!] Domain cannot be empty." -ForegroundColor Red
-                    Exit 1
+                    $useDetected = $false
+                    if ($zoneName) {
+                        Write-Host "❯ Detected domain on your Cloudflare account: $zoneName" -ForegroundColor Yellow
+                        $useDetectedOpt = Read-Host "  👉 Do you want to use this domain? [Y/n]"
+                        if ($useDetectedOpt -notmatch "^[nN]") {
+                            $useDetected = $true
+                        }
+                    }
+                    
+                    if ($useDetected) {
+                        $cfDomain = "zedvip.$zoneName"
+                        Write-Host "✔ Subdomain automatically set to: $cfDomain" -ForegroundColor Green
+                    } else {
+                        Write-Host "[*] Re-authenticating with Cloudflare to choose a different domain..." -ForegroundColor Yellow
+                        if (Test-Path $certPath) {
+                            Remove-Item -Path $certPath -Force
+                        }
+                        Start-Process $cloudflaredBin -ArgumentList "tunnel login" -NoNewWindow -Wait
+                        
+                        # Re-detect domain from the new cert.pem
+                        if (Test-Path $certPath) {
+                            try {
+                                $tokenContent = (Get-Content -Path $certPath | Where-Object { $_ -notmatch "ARGO TUNNEL TOKEN" }) -join ""
+                                $decodedBytes = [System.Convert]::FromBase64String($tokenContent)
+                                $decodedJson = [System.Text.Encoding]::UTF8.GetString($decodedBytes) | ConvertFrom-Json
+                                $zoneId = $decodedJson.zoneID
+                                $apiToken = $decodedJson.apiToken
+                                
+                                if ($zoneId -and $apiToken) {
+                                    Write-Host "❯ Querying Cloudflare account domains..." -ForegroundColor Yellow
+                                    $headers = @{
+                                        "Authorization" = "Bearer $apiToken"
+                                        "Content-Type" = "application/json"
+                                    }
+                                    $response = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId" -Headers $headers -TimeoutSec 10
+                                    if ($response -and $response.result -and $response.result.name) {
+                                        $zoneName = $response.result.name
+                                        Write-Host "✔ Detected: $zoneName" -ForegroundColor Green
+                                        $cfDomain = "zedvip.$zoneName"
+                                        Write-Host "✔ Subdomain automatically set to: $cfDomain" -ForegroundColor Green
+                                    }
+                                }
+                            } catch {
+                                Write-Host "✖ Failed to query DNS records" -ForegroundColor Red
+                            }
+                        }
+                        
+                        if (-not $cfDomain) {
+                            Write-Host ""
+                            Write-Host ">>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<" -ForegroundColor Cyan
+                            $cfDomain = Read-Host " Domain"
+                            $cfDomain = $cfDomain.Trim()
+                            
+                            if (-not $cfDomain) {
+                                Write-Host "[!] Domain cannot be empty." -ForegroundColor Red
+                                Exit 1
+                            }
+                        }
+                    }
                 }
+                
+                # Save domain locally for next time
+                $cfDomain | Out-File -FilePath $localDomainFile -NoNewline -Encoding utf8
                 
                 $tName = "zed-railway-" + (Get-Date -UFormat %s)
                 Write-Host "[*] Creating Tunnel ($tName)..." -ForegroundColor Yellow
@@ -245,7 +357,7 @@ $deployRetry = 1
 $deploySuccess = $false
 
 while ($deployRetry -le $maxDeployRetries) {
-    & railway up --service zed-tunnel --ci
+    & railway up --service zed-tunnel --ci --detach
     if ($LASTEXITCODE -eq 0) {
         $deploySuccess = $true
         break
@@ -260,25 +372,15 @@ while ($deployRetry -le $maxDeployRetries) {
 }
 
 if (-not $deploySuccess) {
-    Write-Host "✖ Deployment failed after $maxDeployRetries attempts due to network timeout or connection issues." -ForegroundColor Red
-    Write-Host "❯ Note: If you are in Iran, you might need to use a proxy/VPN to run Railway CLI commands." -ForegroundColor Yellow
-    Exit 1
+    Write-Host "⚠ CLI reported a timeout/error during deployment status tracking." -ForegroundColor Yellow
+    Write-Host "❯ Since the code upload might have succeeded, we will proceed and check logs/domains anyway..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+} else {
+    Write-Host "✔ Container compiled and deployed successfully!" -ForegroundColor Green
 }
-Write-Host "✔ Container compiled and deployed successfully!" -ForegroundColor Green
 
 # 5. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
-Write-Host "❯ Setting up public domain for web terminal..." -ForegroundColor Yellow
-& railway domain 2>&1 >$null
-
-# Fetch domain name
 $domainName = $null
-$domainList = & railway domain list 2>$null
-foreach ($line in $domainList) {
-    if ($line -match '[a-zA-Z0-9.-]+\.up\.railway\.app') {
-        $domainName = $Matches[0]
-        break
-    }
-}
 
 # 6. SCRAPE VLESS CONNECTION LINK
 Write-Host "❯ Waiting for container boot & VLESS link generation (takes ~15s)..." -ForegroundColor Yellow
@@ -305,6 +407,10 @@ while ($retries -lt $maxRetries) {
 }
 Write-Host ""
 
+if ($vlessLink -and $vlessLink -match 'host=([a-zA-Z0-9.-]+)') {
+    $domainName = $Matches[1]
+}
+
 # 7. DISPLAY FINAL OUTPUT BANNERS
 Clear-Host
 Write-Host "⚡ ZEDTUNNEL PRO • RAILWAY AUTOMATION TOOL (WINDOWS)" -ForegroundColor Cyan
@@ -324,13 +430,7 @@ if ($vlessLink) {
     Write-Host ""
 }
 
-if ($domainName) {
-    Write-Host "🌐 WEB TERMINAL CONTROL PANEL:" -ForegroundColor White
-    Write-Host "   URL:      https://$domainName" -ForegroundColor Cyan
-    Write-Host "   Username: admin" -ForegroundColor Yellow
-    Write-Host "   Password: zed123" -ForegroundColor Yellow
-    Write-Host ""
-}
+
 
 Write-Host "❯ The tunnel runs 24/7 in the background on Railway." -ForegroundColor Yellow
 Write-Host "❯ Join our Telegram channel: https://t.me/iWZedLabs" -ForegroundColor Cyan

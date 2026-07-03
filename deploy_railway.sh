@@ -170,16 +170,104 @@ while true; do
                     fi
                 fi
                 
-                echo -e "${Y}[*] Cloudflare authentication required. Please follow the login prompt:${N}"
-                $CLOUDFLARED_BIN tunnel login
-                
-                echo -e "\n${C}>>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<${N}"
-                read -p " Domain: " cf_domain
-                cf_domain=$(echo "$cf_domain" | xargs)
-                if [ -z "$cf_domain" ]; then
-                    echo -e "${R}[!] Domain cannot be empty.${N}"
-                    exit 1
+                if [ -f "$HOME/.cloudflared/cert.pem" ]; then
+                    echo -e "${G}✔ Active Cloudflare authentication certificate detected. Skipping login...${N}"
+                else
+                    echo -e "${Y}[*] Cloudflare authentication required. Please follow the login prompt:${N}"
+                    $CLOUDFLARED_BIN tunnel login
                 fi
+                
+                # Resolve Cloudflare root zone domain from cert.pem
+                ZONE_NAME=""
+                if [ -f "$HOME/.cloudflared/cert.pem" ]; then
+                    TOKEN_CONTENT=$(grep -v 'ARGO TUNNEL TOKEN' "$HOME/.cloudflared/cert.pem" | tr -d '\n\r ')
+                    DECODED_JSON=$(echo "$TOKEN_CONTENT" | base64 -d 2>/dev/null)
+                    ZONE_ID=$(echo "$DECODED_JSON" | jq -r '.zoneID // empty')
+                    API_TOKEN=$(echo "$DECODED_JSON" | jq -r '.apiToken // empty')
+                    if [ -n "$ZONE_ID" ] && [ -n "$API_TOKEN" ]; then
+                        echo -ne "${Y}❯ Querying Cloudflare account domains...${N}"
+                        ZONE_NAME=$(curl -s --max-time 10 -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID" \
+                             -H "Authorization: Bearer $API_TOKEN" \
+                             -H "Content-Type: application/json" | jq -r '.result.name // empty')
+                        if [ -n "$ZONE_NAME" ]; then
+                            echo -e " ${G}Detected: $ZONE_NAME${N}"
+                        else
+                            echo -e " ${R}Failed (using manual entry)${N}"
+                        fi
+                    fi
+                fi
+                
+                # Check for previously configured domain (locally first, then on Railway)
+                PREV_DOMAIN=""
+                if [ -f "./.cf_domain" ]; then
+                    PREV_DOMAIN=$(cat ./.cf_domain | xargs)
+                fi
+                if [ -z "$PREV_DOMAIN" ]; then
+                    PREV_DOMAIN=$(railway variable list --service zed-tunnel --json 2>/dev/null | jq -r '.CF_DOMAIN // empty')
+                fi
+                
+                cf_domain=""
+                if [ -n "$PREV_DOMAIN" ]; then
+                    echo -e "${Y}❯ Detected previously configured domain: ${W}$PREV_DOMAIN${N}"
+                    read -p "  👉 Do you want to reuse this domain? [Y/n]: " reuse_opt
+                    if [[ ! "$reuse_opt" =~ ^[nN] ]]; then
+                        cf_domain="$PREV_DOMAIN"
+                    fi
+                fi
+                
+                if [ -z "$cf_domain" ]; then
+                    USE_DETECTED=false
+                    if [ -n "$ZONE_NAME" ]; then
+                        echo -e "${Y}❯ Detected domain on your Cloudflare account: ${W}$ZONE_NAME${N}"
+                        read -p "  👉 Do you want to use this domain? [Y/n]: " use_detected_opt
+                        if [[ ! "$use_detected_opt" =~ ^[nN] ]]; then
+                            USE_DETECTED=true
+                        fi
+                    fi
+                    
+                    if [ "$USE_DETECTED" = true ]; then
+                        cf_domain="zedvip.$ZONE_NAME"
+                        echo -e "${G}✔ Subdomain automatically set to: $cf_domain${N}"
+                    else
+                        echo -e "${Y}[*] Re-authenticating with Cloudflare to choose a different domain...${N}"
+                        rm -f "$HOME/.cloudflared/cert.pem"
+                        $CLOUDFLARED_BIN tunnel login
+                        
+                        # Re-detect domain from the new cert.pem
+                        if [ -f "$HOME/.cloudflared/cert.pem" ]; then
+                            TOKEN_CONTENT=$(grep -v 'ARGO TUNNEL TOKEN' "$HOME/.cloudflared/cert.pem" | tr -d '\n\r ')
+                            DECODED_JSON=$(echo "$TOKEN_CONTENT" | base64 -d 2>/dev/null)
+                            ZONE_ID=$(echo "$DECODED_JSON" | jq -r '.zoneID // empty')
+                            API_TOKEN=$(echo "$DECODED_JSON" | jq -r '.apiToken // empty')
+                            if [ -n "$ZONE_ID" ] && [ -n "$API_TOKEN" ]; then
+                                echo -ne "${Y}❯ Querying Cloudflare account domains...${N}"
+                                ZONE_NAME=$(curl -s --max-time 10 -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID" \
+                                     -H "Authorization: Bearer $API_TOKEN" \
+                                     -H "Content-Type: application/json" | jq -r '.result.name // empty')
+                                if [ -n "$ZONE_NAME" ]; then
+                                    echo -e " ${G}Detected: $ZONE_NAME${N}"
+                                    cf_domain="zedvip.$ZONE_NAME"
+                                    echo -e "${G}✔ Subdomain automatically set to: $cf_domain${N}"
+                                else
+                                    echo -e " ${R}Failed${N}"
+                                fi
+                            fi
+                        fi
+                        
+                        if [ -z "$cf_domain" ]; then
+                            echo -e "\n${C}>>> IMPORTANT: Enter your EXACT Subdomain (e.g. vip.yourdomain.com) <<<${N}"
+                            read -p " Domain: " cf_domain
+                            cf_domain=$(echo "$cf_domain" | xargs)
+                            if [ -z "$cf_domain" ]; then
+                                echo -e "${R}[!] Domain cannot be empty.${N}"
+                                exit 1
+                            fi
+                        fi
+                    fi
+                fi
+                
+                # Save domain locally for next time
+                echo "$cf_domain" > ./.cf_domain
                 
                 TNAME="zed-railway-$(date +%s)"
                 echo -e "${Y}[*] Creating Tunnel (${TNAME})...${N}"
@@ -228,7 +316,7 @@ deploy_retry=1
 deploy_success=false
 
 while [ $deploy_retry -le $max_deploy_retries ]; do
-    railway up --service zed-tunnel --ci
+    railway up --service zed-tunnel --ci --detach
     if [ $? -eq 0 ]; then
         deploy_success=true
         break
@@ -243,42 +331,15 @@ while [ $deploy_retry -le $max_deploy_retries ]; do
 done
 
 if [ "$deploy_success" = false ]; then
-    echo -e "${R}✖ Deployment failed after $max_deploy_retries attempts due to network timeout or connection issues.${N}"
-    echo -e "${Y}❯ Note: If you are in Iran, you might need to use a proxy/VPN to run Railway CLI commands.${N}"
-    exit 1
+    echo -e "${Y}⚠ CLI reported a timeout/error during deployment status tracking.${N}"
+    echo -e "${Y}❯ Since the code upload might have succeeded, we will proceed and check logs/domains anyway...${N}"
+    sleep 5
+else
+    echo -e "${G}✔ Container compiled and deployed successfully!${N}"
 fi
-echo -e "${G}✔ Container compiled and deployed successfully!${N}"
 
 # 5. GENERATE PUBLIC DOMAIN FOR WEB TERMINAL
-echo -e "\n${C}❯ Public Domain Options:${N}"
-echo -e "  ${G}[1]${N} Use a free Railway domain (*.up.railway.app)"
-echo -e "  ${Y}[2]${N} Use your own custom domain"
-
 DOMAIN_NAME=""
-while true; do
-    read -p "  👉 Choice [1-2]: " domain_choice_raw
-    domain_choice=$(echo "$domain_choice_raw" | tr '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' '01234567890123456789')
-    
-    if [ "$domain_choice" = "1" ]; then
-        echo -e "${Y}❯ Setting up free Railway domain...${N}"
-        railway domain --service zed-tunnel >/dev/null 2>&1 || true
-        DOMAIN_NAME=$(railway domain list --service zed-tunnel 2>/dev/null | grep -oE '[a-zA-Z0-9.-]+\.up\.railway\.app' | head -n1)
-        break
-    elif [ "$domain_choice" = "2" ]; then
-        read -p "  👉 Enter your custom domain: " custom_domain
-        if [ -n "$custom_domain" ]; then
-            echo -e "${Y}❯ Binding custom domain: $custom_domain...${N}"
-            railway domain "$custom_domain" --service zed-tunnel
-            DOMAIN_NAME="$custom_domain"
-            echo -e "${Y}⚠ IMPORTANT: Make sure to point your DNS (CNAME or ALIAS) to the target shown above.${N}"
-            break
-        else
-            echo -e "${R}✖ Domain cannot be empty.${N}"
-        fi
-    else
-        echo -e "${R}✖ Invalid choice. Please enter 1 or 2.${N}"
-    fi
-done
 
 # 6. SCRAPE VLESS CONNECTION LINK
 echo -e "${Y}❯ Waiting for container boot & VLESS link generation (takes ~15s)...${N}"
@@ -303,6 +364,11 @@ while [ $retries -lt $max_retries ]; do
 done
 echo ""
 
+if [ -n "$VLESS_LINK" ]; then
+    # Extract host=... from VLESS link
+    DOMAIN_NAME=$(echo "$VLESS_LINK" | grep -oE 'host=[a-zA-Z0-9.-]+' | cut -d= -f2)
+fi
+
 # 7. DISPLAY FINAL OUTPUT BANNERS
 print_header
 echo -e "\n🎉 ${G}SUCCESS! Your ZedTunnel Pro is running on Railway.${N}\n"
@@ -316,12 +382,7 @@ else
     echo -e "    ${C}railway logs${N}\n"
 fi
 
-if [ -n "$DOMAIN_NAME" ]; then
-    echo -e "${W}🌐 WEB TERMINAL CONTROL PANEL:${N}"
-    echo -e "   URL:      ${C}https://${DOMAIN_NAME}${N}"
-    echo -e "   Username: ${Y}admin${N}"
-    echo -e "   Password: ${Y}zed123${N}\n"
-fi
+
 
 echo -e "${Y}❯ The tunnel runs 24/7 in the background on Railway.${N}"
 echo -e "${Y}❯ Join our Telegram channel: ${C}https://t.me/iWZedLabs${N}\n"

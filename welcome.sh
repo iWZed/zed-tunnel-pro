@@ -15,12 +15,15 @@ N='\033[0m'    # Reset
 echo -e "${C}⚡ ZEDTUNNEL PRO ${N}• ${W}WEB TERMINAL PANEL${N}\n"
 
 # Check if VLESS link is ready
-if [ ! -f /root/vless.txt ]; then
+HOME_DIR="${HOME:-$PWD}"
+VLESS_TXT="$HOME_DIR/vless.txt"
+
+if [ ! -f "$VLESS_TXT" ]; then
     echo -e "${Y}❯ Waiting for VLESS tunnel initialization and link generation...${N}"
     
     # Spinner loop until file is created
     spinstr='|/-\'
-    while [ ! -f /root/vless.txt ]; do
+    while [ ! -f "$VLESS_TXT" ]; do
         temp=${spinstr#?}
         printf " [%c] Starting tunnel..." "$spinstr"
         spinstr=$temp${spinstr%"$temp"}
@@ -31,7 +34,7 @@ if [ ! -f /root/vless.txt ]; then
 fi
 
 # Link is ready, read it
-LINK=$(cat /root/vless.txt)
+LINK=$(cat "$VLESS_TXT")
 
 echo -e "\n🎉 ${G}SUCCESS! Your VLESS connection link is ready:${N}"
 echo -e "${W}${LINK}${N}\n"

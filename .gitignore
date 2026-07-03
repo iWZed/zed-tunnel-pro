@@ -2,3 +2,4 @@ cloudflared
 cloudflared.exe
 *.log
 .railway
+.cf_domain

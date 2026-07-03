@@ -1,45 +1,39 @@
-FROM debian:bookworm-slim
+FROM alpine:latest
 
-# Avoid prompts from apt
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install core dependencies & utilities
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    wget \
+# Install dependencies (including ttyd via community repository)
+RUN apk add --no-cache \
     curl \
-    git \
-    python3 \
-    neofetch \
+    bash \
+    jq \
     procps \
     psmisc \
-    jq \
-    ca-certificates && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    unzip \
+    wget \
+    ttyd
 
-# Install ttyd for web-based terminal access
-RUN wget -qO /bin/ttyd https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 && \
-    chmod +x /bin/ttyd
 
-# Pre-install Xray core to speed up container boot time
-RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
-    wget -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip && \
+# Download and install Xray core
+RUN wget -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip && \
     unzip -q /tmp/xray.zip -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/xray && \
-    rm -rf /tmp/xray.zip && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /tmp/xray.zip
 
-# Pre-install Cloudflared binary
-RUN curl -L -s https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /root/cloudflared && \
-    chmod +x /root/cloudflared
+# Download and install Cloudflared
+RUN curl -L -s https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
+
+# Download and install neofetch bash script
+RUN curl -fsSL https://raw.githubusercontent.com/dylanaraps/neofetch/master/neofetch -o /usr/local/bin/neofetch && \
+    chmod +x /usr/local/bin/neofetch
+
+WORKDIR /root
 
 # Copy setup, welcome, and entrypoint scripts
-COPY zed.sh /root/zed.sh
-COPY welcome.sh /root/welcome.sh
+COPY zed.sh welcome.sh ./
 COPY entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /root/zed.sh /root/welcome.sh /entrypoint.sh
+RUN chmod +x zed.sh welcome.sh /entrypoint.sh
 
 # Configure neofetch and shell environment
 RUN echo "neofetch" >> /root/.bashrc && \
